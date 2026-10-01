@@ -1,1 +1,444 @@
-# Brainrot-collecting-3D
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Brainrot 3D: Ultimate Meme Collector</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body, html { width: 100%; height: 100%; overflow: hidden; background: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  #canvas-container { width: 100%; height: 100%; position: absolute; left: 0; top: 0; z-index: 1; }
+
+  #top-hud {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 10; pointer-events: none;
+  }
+  .hud-card {
+    background: rgba(15, 23, 42, 0.92); border: 2px solid #ec4899;
+    border-radius: 12px; padding: 6px 14px; color: #fff; pointer-events: auto;
+    display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800;
+  }
+  .aura-txt { color: #c084fc; }
+  .sigma-txt { color: #facc15; }
+
+  #side-menu {
+    position: absolute; right: 10px; top: 65px; display: flex; flex-direction: column; gap: 8px; z-index: 10;
+  }
+  .action-btn {
+    border: 2px solid #fff; border-radius: 10px; color: #fff;
+    padding: 8px 12px; font-weight: 800; font-size: 11px; cursor: pointer; text-align: center;
+  }
+  .btn-ad { background: #059669; border-color: #6ee7b7; }
+  .btn-dex { background: #7c3aed; border-color: #c4b5fd; }
+  .btn-egg { background: #db2777; border-color: #fbcfe8; }
+  .btn-spd { background: #2563eb; border-color: #93c5fd; }
+
+  #alert-banner {
+    position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
+    background: #ec4899; color: #fff; font-size: 16px; font-weight: 900;
+    padding: 10px 22px; border-radius: 30px; border: 2px solid #fff; z-index: 30; display: none;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.8); text-align: center; pointer-events: none;
+  }
+
+  #touch-controls {
+    position: absolute; bottom: 16px; left: 16px; right: 16px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    z-index: 10; pointer-events: none;
+  }
+  #joystick-base {
+    width: 120px; height: 120px; background: rgba(255, 255, 255, 0.2);
+    border: 3px solid rgba(236, 72, 153, 0.7); border-radius: 50%;
+    position: relative; pointer-events: auto; touch-action: none;
+  }
+  #joystick-stick {
+    width: 48px; height: 48px; background: #ec4899;
+    border: 3px solid #fff; border-radius: 50%;
+    position: absolute; top: 36px; left: 36px; pointer-events: none;
+  }
+  .jump-btn {
+    width: 76px; height: 76px; border-radius: 50%; border: 3px solid #fff;
+    background: #facc15; color: #1e293b; font-size: 14px; font-weight: 900;
+    cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center;
+  }
+
+  .modal {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: #0f172a; border: 3px solid #ec4899; border-radius: 18px;
+    padding: 20px; color: #fff; width: 90%; max-width: 340px; max-height: 80vh; overflow-y: auto;
+    z-index: 50; display: none; text-align: center;
+  }
+  .modal h3 { color: #facc15; margin-bottom: 10px; }
+  .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .dex-card { background: #1e293b; border-radius: 8px; padding: 8px; text-align: left; font-size: 11px; }
+  .dex-card.locked { opacity: 0.35; filter: grayscale(1); }
+  .modal-close { background: #ef4444; margin-top: 14px; border-radius: 8px; border: none; color:#fff; font-weight: 800; padding: 6px 18px; cursor: pointer; }
+</style>
+
+<!-- Fast Primary CDN + Local Fallback Script for Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="top-hud">
+  <div class="hud-card">
+    <span class="aura-txt">🔮 AURA: <span id="aura-val">0</span></span>
+    <span class="sigma-txt">🪙 SIGMA: <span id="coins-val">0</span></span>
+  </div>
+  <div class="hud-card">
+    <span>LVL: <span id="lvl-val">1</span></span>
+  </div>
+</div>
+
+<div id="side-menu">
+  <button class="action-btn btn-ad" id="ad-btn">📺 +2500 AURA</button>
+  <button class="action-btn btn-dex" id="dex-btn">📖 DEX</button>
+  <button class="action-btn btn-egg" id="egg-btn">🥚 HATCH PET</button>
+  <button class="action-btn btn-spd" id="spd-btn">⚡ SPEED</button>
+</div>
+
+<div id="alert-banner">SKIBIDI RIZZ!</div>
+
+<div id="touch-controls">
+  <div id="joystick-base">
+    <div id="joystick-stick"></div>
+  </div>
+  <button class="jump-btn" id="btn-jump">JUMP</button>
+</div>
+
+<div class="modal" id="dex-modal">
+  <h3>📖 BRAINROT DEX</h3>
+  <div class="dex-grid" id="dex-list"></div>
+  <button class="modal-close" onclick="document.getElementById('dex-modal').style.display='none'">CLOSE</button>
+</div>
+
+<div class="modal" id="egg-modal">
+  <h3>EGG SHOP 🥚</h3>
+  <p style="font-size:12px; margin-bottom: 12px; color:#cbd5e1;">Hatch pets to multiply your Aura gains!</p>
+  <button class="action-btn btn-egg" id="buy-egg-btn" style="width:100%;">HATCH (100 🪙)</button>
+  <button class="modal-close" onclick="document.getElementById('egg-modal').style.display='none'">CLOSE</button>
+</div>
+
+<script>
+// --- AUDIO SYNTHESIS ---
+let actx = null;
+function playFx(freq, type='sine', d=0.15) {
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = actx.createOscillator();
+    const g = actx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, actx.currentTime);
+    g.gain.setValueAtTime(0.12, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + d);
+    osc.connect(g); g.connect(actx.destination);
+    osc.start(); osc.stop(actx.currentTime + d);
+  } catch(e){}
+}
+
+// --- DATA & STATS ---
+const BRAINROT_TYPES = [
+  { id: 'skibidi', name: 'Skibidi Toilet', tier: 'Common', col: '#94a3b8', pts: 100 },
+  { id: 'grimace', name: 'Grimace Shake', tier: 'Uncommon', col: '#a855f7', pts: 250 },
+  { id: 'mewing', name: 'Gigachad Moai', tier: 'Rare', col: '#38bdf8', pts: 500 },
+  { id: 'fanum', name: 'Fanum Pizza', tier: 'Epic', col: '#f97316', pts: 1000 },
+  { id: 'gronk', name: 'Baby Gronk Gold', tier: 'Legendary', col: '#eab308', pts: 2500 },
+  { id: 'tungsten', name: 'Tungsten Cube', tier: 'Mythic', col: '#ec4899', pts: 10000 }
+];
+
+let dexUnlocked = JSON.parse(localStorage.getItem('br_dex') || '{}');
+let aura = parseInt(localStorage.getItem('br_aura') || '0');
+let coins = parseInt(localStorage.getItem('br_coins') || '0');
+let level = parseInt(localStorage.getItem('br_lvl') || '1');
+let speedLvl = parseInt(localStorage.getItem('br_spd') || '1');
+let petBonus = parseFloat(localStorage.getItem('br_pet') || '1.0');
+
+function updateUI() {
+  document.getElementById('aura-val').textContent = aura;
+  document.getElementById('coins-val').textContent = coins;
+  document.getElementById('lvl-val').textContent = level;
+  localStorage.setItem('br_aura', aura);
+  localStorage.setItem('br_coins', coins);
+  localStorage.setItem('br_lvl', level);
+  localStorage.setItem('br_spd', speedLvl);
+  localStorage.setItem('br_pet', petBonus);
+  localStorage.setItem('br_dex', JSON.stringify(dexUnlocked));
+}
+
+function popBanner(text) {
+  const b = document.getElementById('alert-banner');
+  b.textContent = text;
+  b.style.display = 'block';
+  setTimeout(() => { b.style.display = 'none'; }, 1500);
+}
+
+// Button actions
+document.getElementById('ad-btn').onclick = () => {
+  aura += 2500; coins += 100; updateUI(); playFx(600, 'triangle', 0.25);
+  popBanner("🔥 +2500 AURA & +100 COINS!");
+};
+
+document.getElementById('spd-btn').onclick = () => {
+  const cost = speedLvl * 50;
+  if (coins >= cost) {
+    coins -= cost; speedLvl++; updateUI(); playFx(500, 'sine', 0.2);
+    popBanner(`⚡ SPEED LVL ${speedLvl}!`);
+  } else { alert(`Need ${cost} Sigma Coins!`); }
+};
+
+document.getElementById('egg-btn').onclick = () => { document.getElementById('egg-modal').style.display = 'block'; };
+document.getElementById('buy-egg-btn').onclick = () => {
+  if (coins >= 100) {
+    coins -= 100; petBonus += 1.0; updateUI(); playFx(850, 'triangle', 0.3);
+    popBanner("🥚 PET HATCHED! (+1x Multiplier)");
+    document.getElementById('egg-modal').style.display = 'none';
+  } else { alert("Need 100 Sigma Coins!"); }
+};
+
+document.getElementById('dex-btn').onclick = () => {
+  const list = document.getElementById('dex-list');
+  list.innerHTML = '';
+  BRAINROT_TYPES.forEach(t => {
+    const isFound = dexUnlocked[t.id];
+    const card = document.createElement('div');
+    card.className = `dex-card ${isFound ? '' : 'locked'}`;
+    card.innerHTML = `
+      <div style="font-weight:bold; color:${t.col}">${t.name}</div>
+      <div style="font-size:10px; color:#94a3b8;">${t.tier} &bull; ${t.pts} Aura</div>
+      <div style="color:#facc15; margin-top:2px;">Found: ${dexUnlocked[t.id] || 0}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.getElementById('dex-modal').style.display = 'block';
+};
+
+// --- THREE.JS 3D ENGINE ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0f19);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+container.appendChild(renderer.domElement);
+
+// Multi-Light Setup
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+const sun = new THREE.DirectionalLight(0xf472b6, 0.7);
+sun.position.set(20, 35, 20);
+scene.add(sun);
+
+// Arena Ground
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(64, 64),
+  new THREE.MeshLambertMaterial({ color: 0x1e1b4b })
+);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+// Border Walls
+const bMat = new THREE.MeshLambertMaterial({ color: 0x4338ca });
+const bL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 64), bMat); bL.position.set(-32, 5, 0); scene.add(bL);
+const bR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 64), bMat); bR.position.set(32, 5, 0); scene.add(bR);
+const bF = new THREE.Mesh(new THREE.BoxGeometry(64, 10, 1.2), bMat); bF.position.set(0, 5, 32); scene.add(bF);
+const bB = new THREE.Mesh(new THREE.BoxGeometry(64, 10, 1.2), bMat); bB.position.set(0, 5, -32); scene.add(bB);
+
+// Player Group
+const player = new THREE.Group();
+const pBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 0.6), new THREE.MeshLambertMaterial({ color: 0xec4899 }));
+pBody.position.y = 1.2; player.add(pBody);
+const pHead = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+pHead.position.y = 2.2; player.add(pHead);
+const pVisor = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.2), new THREE.MeshLambertMaterial({ color: 0x000000 }));
+pVisor.position.set(0, 2.3, 0.42); player.add(pVisor);
+
+const petOrb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshLambertMaterial({ color: 0x8b5cf6 }));
+petOrb.position.set(1.4, 2.2, 0); player.add(petOrb);
+
+scene.add(player);
+
+// --- 3D BRAINROT MODEL CREATION ---
+function makeBrainrot(id) {
+  const g = new THREE.Group();
+  if (id === 'skibidi') {
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.35, 0.6, 16), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    bowl.position.y = 0.3; g.add(bowl);
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.35), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    tank.position.set(0, 0.65, -0.35); g.add(tank);
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+    h.position.set(0, 0.8, 0); g.add(h);
+  } else if (id === 'grimace') {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.28, 0.85, 16), new THREE.MeshLambertMaterial({ color: 0x7e22ce }));
+    cup.position.y = 0.42; g.add(cup);
+    const whip = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshLambertMaterial({ color: 0xfdf4ff }));
+    whip.position.y = 0.9; g.add(whip);
+  } else if (id === 'mewing') {
+    const moai = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.2, 0.6), new THREE.MeshLambertMaterial({ color: 0x64748b }));
+    moai.position.y = 0.6; g.add(moai);
+  } else if (id === 'fanum') {
+    const pizza = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.2, 3), new THREE.MeshLambertMaterial({ color: 0xf59e0b }));
+    pizza.rotation.x = Math.PI / 2; pizza.position.y = 0.5; g.add(pizza);
+  } else if (id === 'gronk') {
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+    cup.position.y = 0.6; g.add(cup);
+  } else {
+    const cube = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({ color: 0xec4899 }));
+    cube.position.y = 0.5; g.add(cube);
+  }
+  return g;
+}
+
+let items = [];
+function spawnWorld() {
+  items.forEach(it => scene.remove(it.mesh));
+  items = [];
+
+  for (let i = 0; i < 16; i++) {
+    const r = Math.random();
+    let type = BRAINROT_TYPES[0];
+    if (r < 0.38) type = BRAINROT_TYPES[0];
+    else if (r < 0.65) type = BRAINROT_TYPES[1];
+    else if (r < 0.82) type = BRAINROT_TYPES[2];
+    else if (r < 0.93) type = BRAINROT_TYPES[3];
+    else if (r < 0.98) type = BRAINROT_TYPES[4];
+    else type = BRAINROT_TYPES[5];
+
+    const m = makeBrainrot(type.id);
+    m.position.set((Math.random() - 0.5) * 52, 0, (Math.random() - 0.5) * 52);
+    scene.add(m);
+    items.push({ mesh: m, data: type, isCoin: false });
+  }
+
+  // Coins
+  for (let j = 0; j < 8; j++) {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.15, 16), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+    c.rotation.x = Math.PI / 2;
+    c.position.set((Math.random() - 0.5) * 52, 0.6, (Math.random() - 0.5) * 52);
+    scene.add(c);
+    items.push({ mesh: c, data: { name: 'SIGMA COIN', pts: 10 }, isCoin: true });
+  }
+}
+
+// --- TOUCH & KEYBOARD CONTROLS ---
+const keys = {};
+window.addEventListener('keydown', (e) => { keys[e.code] = true; if (e.code === 'Space') doJump(); });
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+const joyBase = document.getElementById('joystick-base');
+const joyStick = document.getElementById('joystick-stick');
+let jId = null, jCenter = { x: 0, y: 0 };
+let moveDir = new THREE.Vector2();
+
+joyBase.addEventListener('touchstart', (e) => {
+  const t = e.changedTouches[0]; jId = t.identifier;
+  const r = joyBase.getBoundingClientRect();
+  jCenter = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  updateJoy(t.clientX, t.clientY);
+}, { passive: false });
+
+window.addEventListener('touchmove', (e) => {
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === jId) updateJoy(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+  }
+}, { passive: false });
+
+function resetJoy() { jId = null; joyStick.style.transform = 'translate(0, 0)'; moveDir.set(0, 0); }
+window.addEventListener('touchend', (e) => { for (let i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === jId) resetJoy(); });
+window.addEventListener('touchcancel', resetJoy);
+
+function updateJoy(cx, cy) {
+  const dx = cx - jCenter.x, dy = cy - jCenter.y;
+  const dist = Math.hypot(dx, dy);
+  const maxR = 40;
+  const ang = Math.atan2(dy, dx);
+  const cDist = Math.min(dist, maxR);
+  const nx = Math.cos(ang) * cDist, ny = Math.sin(ang) * cDist;
+  joyStick.style.transform = `translate(${nx}px, ${ny}px)`;
+  moveDir.set(nx / maxR, -ny / maxR);
+}
+
+let pVelY = 0, isGrounded = true;
+function doJump() {
+  if (isGrounded) { pVelY = 9.5; isGrounded = false; playFx(360, 'triangle', 0.2); }
+}
+document.getElementById('btn-jump').onclick = doJump;
+
+// --- LOOP ---
+let lastT = performance.now();
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now();
+  const dt = Math.min((now - lastT) / 1000, 0.08);
+  lastT = now;
+
+  const curSpd = 9.0 + (speedLvl - 1) * 1.5;
+  let mx = 0, mz = 0;
+  if (keys['KeyW'] || keys['ArrowUp']) mz += 1;
+  if (keys['KeyS'] || keys['ArrowDown']) mz -= 1;
+  if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+  if (moveDir.lengthSq() > 0.05) { mx = moveDir.x; mz = moveDir.y; }
+
+  const len = Math.hypot(mx, mz);
+  if (len > 0.05) {
+    player.position.x += (mx / (len > 1 ? len : 1)) * curSpd * dt;
+    player.position.z += (mz / (len > 1 ? len : 1)) * curSpd * dt;
+    player.rotation.y = Math.atan2(mx, mz);
+  }
+
+  pVelY -= 22.0 * dt;
+  player.position.y += pVelY * dt;
+  if (player.position.y <= 0) { player.position.y = 0; pVelY = 0; isGrounded = true; }
+
+  player.position.x = Math.max(-30, Math.min(30, player.position.x));
+  player.position.z = Math.max(-30, Math.min(30, player.position.z));
+
+  // Item pickup check
+  for (let k = items.length - 1; k >= 0; k--) {
+    const it = items[k];
+    it.mesh.rotation.y += 2.0 * dt;
+    it.mesh.position.y = Math.sin(now * 0.005 + k) * 0.25;
+
+    if (player.position.distanceTo(it.mesh.position) < 1.7) {
+      scene.remove(it.mesh);
+      items.splice(k, 1);
+
+      if (it.isCoin) {
+        coins += 10; playFx(720, 'sine', 0.1); popBanner("+10 SIGMA COINS 🪙");
+      } else {
+        const reward = Math.round(it.data.pts * petBonus);
+        aura += reward;
+        dexUnlocked[it.data.id] = (dexUnlocked[it.data.id] || 0) + 1;
+        playFx(500, 'square', 0.15);
+        popBanner(`+${reward} AURA! (${it.data.name}) 🔥`);
+      }
+      updateUI();
+    }
+  }
+
+  if (items.length <= 4) {
+    level++; coins += 35; updateUI(); spawnWorld();
+    popBanner(`LEVEL ${level} REACHED! (+35 COINS)`);
+  }
+
+  camera.position.lerp(new THREE.Vector3(player.position.x, player.position.y + 6.5, player.position.z - 11), 0.1);
+  camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z + 3);
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+updateUI();
+spawnWorld();
+loop();
+</script>
+</body>
+</html>
